@@ -2,6 +2,8 @@ window.onload = function () {
     var IndexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
     var taskForm = document.getElementById('task-form');
     var listContainer = document.getElementById('list-container');
+    var clearDbButton = document.getElementById('cleardb');
+
     /**
      * Intenta obtener la conexión a la base de datos 'list', y si no existe
      * la creará en su versión 1.
@@ -46,6 +48,7 @@ window.onload = function () {
     var renderTask = function (task, reset = false) {
         var container = listContainer;
         var html = document.createElement('div');
+        var delButton = document.createElement('button');
 
         if (true === reset) {
             container.innerHTML = '';
@@ -55,7 +58,15 @@ window.onload = function () {
 
         html.innerHTML = "id: " + task.task_id + " - título: " + task.title;
 
+        delButton.innerHTML = 'Borrar';
+
+        html.appendChild(delButton);
+
         container.appendChild(html);
+
+        delButton.addEventListener('click', function (event) {
+            deleteTask(task.task_id);
+        });
     };
 
     /**
@@ -120,6 +131,10 @@ window.onload = function () {
         var elements = [];
 
         transaction.oncomplete = function (event) {
+            if (elements.length === 0) {
+                listContainer.innerHTML = '';
+            }
+
             [].forEach.call(elements, function(task) {
                 renderTask(task);
             });
@@ -138,6 +153,33 @@ window.onload = function () {
                 elements.push(cursor.value);
                 cursor.continue();
             }
+        };
+    };
+
+    var clearAll = function () {
+        var connection = database.result;
+        var transaction = connection.transaction('tasks', 'readwrite');
+        var objectStore = transaction.objectStore('tasks');
+        var request = objectStore.clear();
+        
+        request.onsuccess = function (event) {
+            listContainer.innerHTML = '';
+        };
+    };
+
+    clearDbButton.addEventListener('click', function (event) {
+        clearAll();
+    });
+
+    var deleteTask = function (taskId) {
+        var connection = database.result;
+        var transaction = connection.transaction('tasks', 'readwrite');
+        var objectStore = transaction.objectStore('tasks');
+        var delRequest = objectStore.delete(taskId);
+
+        delRequest.onsuccess = function (event) {
+            console.log('borrado correctamente: ' + taskId);
+            loadAll();
         };
     };
 };
